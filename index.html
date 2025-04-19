@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Light the City</title>
+
+   
+</head>
+<body>
+  <h1>🌆 Light the City</h1>
+
+  <div id="scoreboard">💡 Houses Lit: <span id="score">0</span></div>
+  <div id="timer">⏳ Time Left: <span id="time-left">30</span> seconds</div>
+
+  <div id="maze"></div>
+
+  <button id="reset">🔄 New Maze</button>
+  <div id="celebration">🎉 Congratulations! You lit up all the houses! 🎉</div>
+
+  <audio id="lightSound" src="https://cdn.pixabay.com/audio/2023/03/21/audio_0c92b46fd3.mp3" preload="auto"></audio>
+  <audio id="celebrationSound" src="https://cdn.pixabay.com/audio/2023/03/21/audio_8555363eeb.mp3" preload="auto"></audio>
+  <style>
+  body {
+    background-color: #111827;
+    color: white;
+    font-family: sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  #scoreboard, #timer {
+    font-weight: bold;
+    font-size: 18px;
+    margin: 10px;
+  }
+
+  #maze {
+    display: grid;
+    grid-template-columns: repeat(5, 40px); /* 5x5 grid */
+    gap: 2px;
+  }
+
+  .cell {
+    width: 40px;
+    height: 40px;
+    background-color: #374151;
+    transition: background-color 0.3s ease, box-shadow 0.3s ease, outline 0.3s ease;
+  }
+
+  .wall {
+    background-color: #1f2937;
+    cursor: not-allowed;
+  }
+
+  .start {
+    background-color: #34d399;
+  }
+
+  .end {
+    background-color: #f87171;
+  }
+
+  .active {
+    outline: 3px solid #facc15;
+    box-shadow: 0 0 10px #facc15;
+  }
+
+  .path {
+    background-color: #facc15;
+    box-shadow: 0 0 20px #facc15, 0 0 10px #facc15 inset;
+  }
+
+  .cell:hover {
+    outline: 2px solid #eab308;
+    cursor: pointer;
+  }
+
+  .wall:hover {
+    outline: none;
+    cursor: not-allowed;
+  }
+
+  button {
+    margin-top: 10px;
+    padding: 8px 12px;
+    background-color: #facc15;
+    border: none;
+    border-radius: 6px;
+    font-weight: bold;
+    cursor: pointer;
+  }
+
+  button:hover {
+    background-color: #eab308;
+  }
+
+  #celebration {
+    display: none;
+    font-size: 2rem;
+    color: #facc15;
+    font-weight: bold;
+    padding: 20px;
+    animation: celebrationAnimation 1.5s ease-in-out;
+  }
+
+  @keyframes celebrationAnimation {
+    0% { transform: scale(1); opacity: 0; }
+    50% { transform: scale(1.2); opacity: 1; }
+    100% { transform: scale(1); opacity: 1; }
+  }
+</style>
+
+  <script>
+    const mazeContainer = document.getElementById("maze");
+    const rows = 5, cols = 5;
+    let maze = [];
+    let current = { x: 0, y: 0 };
+    let litCells = [];
+    let totalHouses = 0;
+    let timeLeft = 30;
+    let timerInterval;
+
+    function startTimer() {
+      timeLeft = 30;
+      document.getElementById("time-left").textContent = timeLeft;
+
+      timerInterval = setInterval(() => {
+        timeLeft--;
+        document.getElementById("time-left").textContent = timeLeft;
+
+        if (timeLeft <= 0) {
+          clearInterval(timerInterval);
+          alert("Time's up! You lit " + litCells.length + " houses!");
+        }
+      }, 1000);
+    }
+
+    function generateMaze() {
+      maze = Array.from({ length: rows }, () =>
+        Array.from({ length: cols }, () => (Math.random() > 0.3 ? 0 : 1))
+      );
+      maze[0][0] = 0;
+      maze[rows - 1][cols - 1] = 0;
+
+      totalHouses = 0;
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          if (maze[y][x] === 0) totalHouses++;
+        }
+      }
+
+      litCells = [];
+      current = { x: 0, y: 0 };
+      startTimer();
+      document.getElementById("celebration").style.display = "none";
+      drawMaze();
+    }
+
+    function drawMaze() {
+      mazeContainer.innerHTML = "";
+
+      for (let y = 0; y < rows; y++) {
+        for (let x = 0; x < cols; x++) {
+          const div = document.createElement("div");
+          div.classList.add("cell");
+          div.dataset.x = x;
+          div.dataset.y = y;
+
+          if (maze[y][x] === 1) div.classList.add("wall");
+          if (y === 0 && x === 0) div.classList.add("start");
+          if (y === rows - 1 && x === cols - 1) div.classList.add("end");
+          if (y === current.y && x === current.x) div.classList.add("active");
+          if (litCells.some(c => c.x === x && c.y === y)) div.classList.add("path");
+
+          div.addEventListener("click", handleCellClick);
+          div.addEventListener("dblclick", handleCellDoubleClick);
+
+          mazeContainer.appendChild(div);
+        }
+      }
+    }
+
+    function handleCellClick(e) {
+      const x = parseInt(e.target.dataset.x);
+      const y = parseInt(e.target.dataset.y);
+      if (maze[y][x] !== 1) {
+        current = { x, y };
+        drawMaze();
+      }
+    }
+
+    function handleCellDoubleClick(e) {
+      const x = parseInt(e.target.dataset.x);
+      const y = parseInt(e.target.dataset.y);
+      if (maze[y][x] !== 1) {
+        const isLit = litCells.some(c => c.x === x && c.y === y);
+        if (!isLit) {
+          litCells.push({ x, y });
+          document.getElementById("lightSound").play();
+          updateScore();
+        }
+        drawMaze();
+      }
+    }
+
+    function checkGameOver() {
+      if (litCells.length === totalHouses) {
+        clearInterval(timerInterval);
+        document.getElementById("celebration").style.display = "block";
+        document.getElementById("celebrationSound").play();
+      }
+    }
+
+    function updateScore() {
+      document.getElementById("score").textContent = litCells.length;
+      checkGameOver();
+    }
+
+    document.getElementById("reset").addEventListener("click", () => {
+      clearInterval(timerInterval);
+      generateMaze();
+    });
+
+    generateMaze();
+  </script>
+</body>
+</html>
